@@ -153,6 +153,7 @@ fn simple_actor() {
         //! This is all auto-generated. Do not touch.
         #[allow(unused_imports)]
         use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
+        #[allow(unused_imports)]
         use super::*;
 
         impl Actor for SomeActor {
@@ -281,6 +282,7 @@ fn trait_and_impl() {
         //! This is all auto-generated. Do not touch.
         #[allow(unused_imports)]
         use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
+        #[allow(unused_imports)]
         use super::*;
 
         #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

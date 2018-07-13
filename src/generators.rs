@@ -192,6 +192,16 @@ impl Model {
             trait_ids_1.clone(),
             trait_ids_1.clone(),
         );
+        #[cfg(feature = "serde-serialization")]
+        let trait_id_derives = trait_ids_1.iter().map(|_|
+            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)])
+        ).collect::<Vec<_>>();
+
+        #[cfg(not(feature = "serde-serialization"))]
+        let trait_id_derives = trait_ids_1.iter().map(|_|
+            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)])
+        ).collect::<Vec<_>>();
+
         let (handler_criticals, _) = self.map_trait_handlers(|_, handler| {
             Ident::from(if handler.critical { "true" } else { "false" })
         });
@@ -233,7 +243,7 @@ impl Model {
 
         quote!(
             #(
-            #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+            #trait_id_derives
             pub struct #trait_ids_1 {
                 _raw_id: RawID
             }
@@ -305,6 +315,16 @@ impl Model {
             actor_here_ids_1.clone(),
         );
 
+        #[cfg(feature = "serde-serialization")]
+        let actor_here_id_derives = actor_here_ids_1.iter().map(|_|
+            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)])
+        ).collect::<Vec<_>>();
+
+        #[cfg(not(feature = "serde-serialization"))]
+        let actor_here_id_derives = actor_here_ids_1.iter().map(|_|
+            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)])
+        ).collect::<Vec<_>>();
+
         let actor_ids: Vec<_> = self.actors.keys().map(actor_name_to_id).collect();
         let (handler_names, init_handler_names) =
             self.map_handlers(OnlyOwn, |_, handler| handler.name.clone());
@@ -365,7 +385,7 @@ impl Model {
                 }
             }
 
-            #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+            #actor_here_id_derives
             pub struct #actor_here_ids_1 {
                 _raw_id: RawID
             }
