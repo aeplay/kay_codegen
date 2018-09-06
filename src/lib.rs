@@ -107,6 +107,7 @@ pub fn generate(model: &Model) -> String {
 
     quote!(
         //! This is all auto-generated. Do not touch.
+        #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
         use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
         #[allow(unused_imports)]
@@ -151,6 +152,7 @@ fn simple_actor() {
     );
     let expected = quote!(
         //! This is all auto-generated. Do not touch.
+        #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
         use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
         #[allow(unused_imports)]
@@ -280,6 +282,7 @@ fn trait_and_impl() {
     );
     let expected = quote!(
         //! This is all auto-generated. Do not touch.
+        #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
         use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
         #[allow(unused_imports)]
