@@ -14,7 +14,6 @@ use glob::glob;
 use std::fs::{File, metadata};
 use std::io::Read;
 use std::io::Write;
-use std::process::Command;
 
 extern crate ordermap;
 use ordermap::OrderMap;
@@ -53,8 +52,6 @@ pub fn scan_and_generate(src_prefix: &str) {
                     if let Ok(ref mut file) = File::create(&auto_path) {
                         file.write_all(auto_file.as_bytes()).unwrap();
                     }
-
-                    let _ = Command::new("cargo").arg("fmt").arg("--").arg(&auto_path).spawn();
                 }
             } else {
                 panic!("couldn't load");
