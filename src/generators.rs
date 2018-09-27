@@ -249,7 +249,7 @@ impl Model {
             }
 
             impl TypedID for #trait_ids_2 {
-                unsafe fn from_raw(id: RawID) -> Self {
+                fn from_raw(id: RawID) -> Self {
                     #trait_ids_3 { _raw_id: id }
                 }
 
@@ -391,7 +391,7 @@ impl Model {
             }
 
             impl TypedID for #actor_here_ids_3 {
-                unsafe fn from_raw(id: RawID) -> Self {
+                fn from_raw(id: RawID) -> Self {
                     #actor_here_ids_4 { _raw_id: id }
                 }
 

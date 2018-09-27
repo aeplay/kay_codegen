@@ -172,7 +172,7 @@ fn simple_actor() {
         }
 
         impl TypedID for SomeActorID {
-            unsafe fn from_raw(id: RawID) -> Self {
+            fn from_raw(id: RawID) -> Self {
                 SomeActorID { _raw_id: id }
             }
 
@@ -291,7 +291,7 @@ fn trait_and_impl() {
         }
 
         impl TypedID for SomeTraitID {
-            unsafe fn from_raw(id: RawID) -> Self {
+            fn from_raw(id: RawID) -> Self {
                 SomeTraitID { _raw_id: id }
             }
 
@@ -362,7 +362,7 @@ fn trait_and_impl() {
         }
 
         impl TypedID for SomeActorID {
-            unsafe fn from_raw(id: RawID) -> Self {
+            fn from_raw(id: RawID) -> Self {
                 SomeActorID { _raw_id: id }
             }
 
