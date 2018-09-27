@@ -1,7 +1,7 @@
 [package]
 name = "kay_codegen"
 description = "Code generation for implementing kay actors"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Anselm Eickhoff <anselm.eickhoff@gmail.com>"]
 repository = "https://github.com/aeickhoff/kay_codegen"
 license = "MIT"

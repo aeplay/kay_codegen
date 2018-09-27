@@ -194,7 +194,10 @@ impl Model {
         );
         #[cfg(feature = "serde-serialization")]
         let trait_id_derives = trait_ids_1.iter().map(|_|
-            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)])
+            quote!(
+                #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+                #[serde(transparent)]
+            )
         ).collect::<Vec<_>>();
 
         #[cfg(not(feature = "serde-serialization"))]
@@ -317,7 +320,10 @@ impl Model {
 
         #[cfg(feature = "serde-serialization")]
         let actor_here_id_derives = actor_here_ids_1.iter().map(|_|
-            quote!(#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)])
+            quote!(
+                #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+                #[serde(transparent)]
+            )
         ).collect::<Vec<_>>();
 
         #[cfg(not(feature = "serde-serialization"))]
