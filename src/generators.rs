@@ -411,9 +411,9 @@ impl Model {
 
                 #(
                 pub fn #init_handler_names(#(#init_handler_args,)* world: &mut World) -> Self {
-                    let id = unsafe { #actor_ids_for_init_handlers::from_raw(
+                    let id = #actor_ids_for_init_handlers::from_raw(
                         world.allocate_instance_id::<#actor_types_for_init_handlers_1>()
-                    )};
+                    );
                     let swarm = world.local_broadcast::<#actor_types_for_init_handlers_2>();
                     world.send(swarm, #init_msg_names_1(id, #(#init_msg_params),*));
                     id
@@ -441,7 +441,7 @@ impl Model {
                 #(
                     impl Into<#actor_trait_ids_1> for #actor_ids_for_traits {
                         fn into(self) -> #actor_trait_ids_2 {
-                            unsafe {#actor_trait_ids_3::from_raw(self.as_raw())}
+                            #actor_trait_ids_3::from_raw(self.as_raw())
                         }
                     }
                 )*

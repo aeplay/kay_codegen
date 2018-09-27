@@ -191,9 +191,7 @@ fn simple_actor() {
             }
 
             pub fn init_ish(some_param: usize, world: &mut World) -> Self {
-                let id = unsafe{
-                    SomeActorID::from_raw(world.allocate_instance_id::<SomeActor>())
-                };
+                let id = SomeActorID::from_raw(world.allocate_instance_id::<SomeActor>());
                 let swarm = world.local_broadcast::<SomeActor>();
                 world.send(swarm, MSG_SomeActor_init_ish(id, some_param));
                 id
@@ -375,13 +373,13 @@ fn trait_and_impl() {
 
         impl Into<SomeTraitID> for SomeActorID {
             fn into(self) -> SomeTraitID {
-                unsafe {SomeTraitID::from_raw(self.as_raw())}
+                SomeTraitID::from_raw(self.as_raw())
             }
         }
 
         impl Into<ForeignTraitID> for SomeActorID {
             fn into(self) -> ForeignTraitID {
-                unsafe {ForeignTraitID::from_raw(self.as_raw())}
+                ForeignTraitID::from_raw(self.as_raw())
             }
         }
 
