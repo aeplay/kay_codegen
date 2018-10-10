@@ -110,6 +110,8 @@ impl Model {
     }
 
     pub fn generate_setups(&self) -> Tokens {
+        let trait_ids: Vec<_> = self.traits.keys().map(trait_name_to_id).collect();
+
         let actor_impl_actors: Vec<Vec<_>> = self
             .actors
             .iter()
@@ -158,6 +160,10 @@ impl Model {
         let types_for_init_handlers_2 = types_for_init_handlers_1.clone();
 
         quote!(
+            #(
+                #trait_ids::register_messages(system);
+            )*
+
             #(
                 #(
                     #actor_impl_trait_ids::register_handlers::<#actor_impl_actors>(system);
@@ -226,7 +232,7 @@ impl Model {
             let msg_prefix = trait_to_message_prefix(&trait_name.segments.last().unwrap().ident);
             Ident::new(format!("{}_{}", msg_prefix, handler.name))
         });
-        let (msg_names_2, msg_names_3) = (msg_names_1.clone(), msg_names_1.clone());
+        let (msg_names_2, msg_names_3, msg_names_4) = (msg_names_1.clone(), msg_names_1.clone(), msg_names_1.clone());
         let (msg_params_1, _) = self.map_trait_handlers_args(arg_as_value);
         let (msg_param_types, _) = self.map_trait_handlers_args(arg_as_value_type);
         let (msg_derives, _) = self.map_trait_handlers(|_, handler| {
@@ -270,10 +276,16 @@ impl Model {
                 }
                 )*
 
+                pub fn register_messages(system: &mut ActorSystem) {
+                    #(
+                        system.register_trait_message::<#msg_names_3>();
+                    )*
+                }
+
                 pub fn register_handlers<A: Actor + #trait_types_2>(system: &mut ActorSystem) {
                     #(
                     system.add_handler::<A, _, _>(
-                        |&#msg_names_3(#(#msg_args),*), instance, world| {
+                        |&#msg_names_4(#(#msg_args),*), instance, world| {
                         instance.#handler_names_2(#(#handler_params,)* world)#maybe_fate_returns
                     }, #handler_criticals);
                     )*

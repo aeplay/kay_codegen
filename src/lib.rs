@@ -313,6 +313,12 @@ fn trait_and_impl() {
                 world.send(self.as_raw(), MSG_SomeTrait_some_default_impl_method());
             }
 
+            pub fn register_messages(system: &mut ActorSystem) {
+                system.register_trait_message::<MSG_SomeTrait_some_method>();
+                system.register_trait_message::<MSG_SomeTrait_no_params_fate>();
+                system.register_trait_message::<MSG_SomeTrait_some_default_impl_method>();
+            }
+
             pub fn register_handlers<A: Actor + SomeTrait>(system: &mut ActorSystem) {
                 system.add_handler::<A, _, _>(
                     |&MSG_SomeTrait_some_method(ref some_param), instance, world| {
@@ -386,6 +392,7 @@ fn trait_and_impl() {
         #[allow(unused_variables)]
         #[allow(unused_mut)]
         pub fn auto_setup(system: &mut ActorSystem) {
+            SomeTraitID::register_messages(system);
             SomeTraitID::register_handlers::<SomeActor>(system);
             ForeignTraitID::register_handlers::<SomeActor>(system);
         }
