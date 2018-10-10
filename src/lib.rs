@@ -1,4 +1,4 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 #[cfg(test)]
 #[macro_use]
@@ -106,7 +106,7 @@ pub fn generate(model: &Model) -> String {
         //! This is all auto-generated. Do not touch.
         #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
-        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
+        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom, ActorOrActorTrait};
         #[allow(unused_imports)]
         use super::*;
 
@@ -151,7 +151,7 @@ fn simple_actor() {
         //! This is all auto-generated. Do not touch.
         #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
-        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
+        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom, ActorOrActorTrait};
         #[allow(unused_imports)]
         use super::*;
 
@@ -172,6 +172,8 @@ fn simple_actor() {
         }
 
         impl TypedID for SomeActorID {
+            type Target = SomeActor;
+
             fn from_raw(id: RawID) -> Self {
                 SomeActorID { _raw_id: id }
             }
@@ -279,7 +281,7 @@ fn trait_and_impl() {
         //! This is all auto-generated. Do not touch.
         #![cfg_attr(rustfmt, rustfmt_skip)]
         #[allow(unused_imports)]
-        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom};
+        use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom, ActorOrActorTrait};
         #[allow(unused_imports)]
         use super::*;
 
@@ -288,7 +290,15 @@ fn trait_and_impl() {
             _raw_id: RawID
         }
 
+        pub struct SomeTraitActorTraitRepresentative;
+
+        impl ActorOrActorTrait for SomeTraitActorTraitRepresentative {
+            type ID = SomeTraitID;
+        }
+
         impl TypedID for SomeTraitID {
+            type Target = SomeTraitActorTraitRepresentative;
+
             fn from_raw(id: RawID) -> Self {
                 SomeTraitID { _raw_id: id }
             }
@@ -313,13 +323,15 @@ fn trait_and_impl() {
                 world.send(self.as_raw(), MSG_SomeTrait_some_default_impl_method());
             }
 
-            pub fn register_messages(system: &mut ActorSystem) {
+            pub fn register_trait(system: &mut ActorSystem) {
+                system.register_trait::<SomeTraitActorTraitRepresentative>();
                 system.register_trait_message::<MSG_SomeTrait_some_method>();
                 system.register_trait_message::<MSG_SomeTrait_no_params_fate>();
                 system.register_trait_message::<MSG_SomeTrait_some_default_impl_method>();
             }
 
-            pub fn register_handlers<A: Actor + SomeTrait>(system: &mut ActorSystem) {
+            pub fn register_implementor<A: Actor + SomeTrait>(system: &mut ActorSystem) {
+                system.register_implementor::<A, SomeTraitActorTraitRepresentative>();
                 system.add_handler::<A, _, _>(
                     |&MSG_SomeTrait_some_method(ref some_param), instance, world| {
                     instance.some_method(some_param, world);
@@ -366,6 +378,8 @@ fn trait_and_impl() {
         }
 
         impl TypedID for SomeActorID {
+            type Target = SomeActor;
+
             fn from_raw(id: RawID) -> Self {
                 SomeActorID { _raw_id: id }
             }
@@ -392,9 +406,9 @@ fn trait_and_impl() {
         #[allow(unused_variables)]
         #[allow(unused_mut)]
         pub fn auto_setup(system: &mut ActorSystem) {
-            SomeTraitID::register_messages(system);
-            SomeTraitID::register_handlers::<SomeActor>(system);
-            ForeignTraitID::register_handlers::<SomeActor>(system);
+            SomeTraitID::register_trait(system);
+            SomeTraitID::register_implementor::<SomeActor>(system);
+            ForeignTraitID::register_implementor::<SomeActor>(system);
         }
     );
 

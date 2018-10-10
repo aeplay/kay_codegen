@@ -161,12 +161,12 @@ impl Model {
 
         quote!(
             #(
-                #trait_ids::register_messages(system);
+                #trait_ids::register_trait(system);
             )*
 
             #(
                 #(
-                    #actor_impl_trait_ids::register_handlers::<#actor_impl_actors>(system);
+                    #actor_impl_trait_ids::register_implementor::<#actor_impl_actors>(system);
                 )*
 
                 #(
@@ -191,8 +191,15 @@ impl Model {
     pub fn generate_traits(&self) -> Tokens {
         let trait_types_1: Vec<_> = self.traits.keys().collect();
         let trait_types_2 = trait_types_1.clone();
+        let trait_types_3 = trait_types_1.clone();
+        let trait_representatives_1: Vec<_> = self.traits.keys().map(trait_name_to_representative).collect();
+        let trait_representatives_2 = trait_representatives_1.clone();
+        let trait_representatives_3 = trait_representatives_1.clone();
+        let trait_representatives_4 = trait_representatives_1.clone();
+        let trait_representatives_5 = trait_representatives_1.clone();
         let trait_ids_1: Vec<_> = self.traits.keys().map(trait_name_to_id).collect();
-        let (trait_ids_2, trait_ids_3, trait_ids_4, trait_ids_5) = (
+        let (trait_ids_2, trait_ids_3, trait_ids_4, trait_ids_5, trait_ids_6) = (
+            trait_ids_1.clone(),
             trait_ids_1.clone(),
             trait_ids_1.clone(),
             trait_ids_1.clone(),
@@ -257,9 +264,17 @@ impl Model {
                 _raw_id: RawID
             }
 
-            impl TypedID for #trait_ids_2 {
+            pub struct #trait_representatives_1;
+
+            impl ActorOrActorTrait for #trait_representatives_2 {
+                type ID = #trait_ids_2;
+            }
+
+            impl TypedID for #trait_ids_3 {
+                type Target = #trait_representatives_3;
+
                 fn from_raw(id: RawID) -> Self {
-                    #trait_ids_3 { _raw_id: id }
+                    #trait_ids_4 { _raw_id: id }
                 }
 
                 fn as_raw(&self) -> RawID {
@@ -267,22 +282,24 @@ impl Model {
                 }
             }
 
-            impl<A: Actor + #trait_types_1> TraitIDFrom<A> for #trait_ids_4 {}
+            impl<A: Actor + #trait_types_2> TraitIDFrom<A> for #trait_ids_5 {}
 
-            impl #trait_ids_5 {
+            impl #trait_ids_6 {
                 #(
                 pub fn #handler_names_1(&self #(,#handler_args)*, world: &mut World) {
                     world.send(self.as_raw(), #msg_names_1(#(#msg_params_1),*));
                 }
                 )*
 
-                pub fn register_messages(system: &mut ActorSystem) {
+                pub fn register_trait(system: &mut ActorSystem) {
+                    system.register_trait::<#trait_representatives_4>();
                     #(
                         system.register_trait_message::<#msg_names_3>();
                     )*
                 }
 
-                pub fn register_handlers<A: Actor + #trait_types_2>(system: &mut ActorSystem) {
+                pub fn register_implementor<A: Actor + #trait_types_3>(system: &mut ActorSystem) {
+                    system.register_implementor::<A, #trait_representatives_5>();
                     #(
                     system.add_handler::<A, _, _>(
                         |&#msg_names_4(#(#msg_args),*), instance, world| {
@@ -313,6 +330,7 @@ impl Model {
                 }
             })
             .collect();
+        let actor_here_names_2 = actor_here_names_1.clone();
         let actor_here_ids_1: Vec<_> = self
             .actors
             .iter()
@@ -409,6 +427,8 @@ impl Model {
             }
 
             impl TypedID for #actor_here_ids_3 {
+                type Target = #actor_here_names_2;
+
                 fn from_raw(id: RawID) -> Self {
                     #actor_here_ids_4 { _raw_id: id }
                 }
@@ -478,6 +498,10 @@ fn actor_name_to_id(actor_name: &Ty) -> Ident {
 
 fn trait_name_to_id(trait_name: &TraitName) -> Ident {
     Ident::new(format!("{}ID", trait_name.segments.last().unwrap().ident))
+}
+
+fn trait_name_to_representative(trait_name: &TraitName) -> Ident {
+    Ident::new(format!("{}ActorTraitRepresentative", trait_name.segments.last().unwrap().ident))
 }
 
 fn arg_as_ident_and_type(arg: &FnArg) -> FnArg {
