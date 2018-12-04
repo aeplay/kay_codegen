@@ -50,7 +50,14 @@ pub fn scan_and_generate(src_prefix: &str) {
                                     Some(generate(&model))
                                 }
                             }
-                            Err(error) => panic!("PARSE ERROR:\n {:?}", error),
+                            Err(error) => {
+                                println!(
+                                    "cargo:warning=kay_codegen parse error in {}: {}",
+                                    mod_path.to_str().unwrap_or("??"),
+                                    error
+                                );
+                                None
+                            },
                         }
                     } else {
                         panic!("couldn't load");
