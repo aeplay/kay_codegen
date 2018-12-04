@@ -1,7 +1,7 @@
 use {Model, TraitName, Handler, HandlerType};
 use syn::*;
 
-pub fn parse(file: &str) -> Result<Model, parse::Error> {
+pub fn parse(file: &str) -> ::std::result::Result<Model, parse::Error> {
     let mut model = Model::default();
 
     let parsed = parse_file(file)?;
