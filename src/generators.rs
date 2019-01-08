@@ -99,7 +99,7 @@ impl Model {
                 let msg_params = handler.arguments.iter().filter_map(arg_as_value_without_world).collect::<Vec<_>>().join(", ");
 
                 unindent(&format!(r#"
-                    pub fn {handler_name}(&self, {handler_args}) {{
+                    pub fn {handler_name}(self, {handler_args}) {{
                         world.send(self.as_raw(), {msg_name}({msg_params}));
                     }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, msg_params=msg_params))
             }).collect::<Vec<_>>().join("\n\n");
@@ -239,7 +239,7 @@ impl Model {
                 match handler.scope {
                     HandlerType::Handler => {
                         Some(unindent(&format!(r#"
-                            pub fn {handler_name}(&self, {handler_args}) {{
+                            pub fn {handler_name}(self, {handler_args}) {{
                                 world.send(self.as_raw(), {msg_name}({msg_params}));
                             }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, msg_params=msg_params)))
                     },
