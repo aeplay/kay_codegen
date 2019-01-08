@@ -122,7 +122,7 @@ pub fn generate(model: &Model) -> String {
 
     unindent(&format!(r#"
         //! This is all auto-generated. Do not touch.
-        #![cfg_attr(rustfmt, rustfmt_skip)]
+        #![rustfmt::skip]
         #[allow(unused_imports)]
         use kay::{{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom, ActorOrActorTrait}};
         #[allow(unused_imports)]
