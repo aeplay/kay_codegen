@@ -8,19 +8,25 @@ pub fn parse(file: &str) -> ::std::result::Result<Model, parse::Error> {
 
     for item in &parsed.items {
         match item {
-            Item::Struct(ItemStruct{ident, ..}) => {
+            Item::Struct(ItemStruct{ident, generics, ..}) => {
                 let ident_as_seg: PathSegment = ident.clone().into();
                 let actor_def = model
                     .actors
                     .entry(TypePath{qself: None, path: ::syn::Path::from(ident_as_seg)}.into())
                     .or_insert_with(Default::default);
                 actor_def.defined_here = true;
+                actor_def.generics = generics.clone();
             }
-            Item::Impl(ItemImpl{trait_: ref maybe_trait, self_ty: ref actor_name, items: ref impl_items, ..}) => {
+            Item::Impl(ItemImpl{trait_: ref maybe_trait, self_ty: ref actor_name, items: ref impl_items, generics, ..}) => {
+                let actor_name_no_args = match **actor_name {
+                   Type::Path(TypePath{ref path, ..}) => TypePath{qself: None, path: ::syn::Path::from(path.segments[0].ident.clone())},
+                    _ => unimplemented!(),
+                };
                 let actor_def = model
                     .actors
-                    .entry((**actor_name).clone())
+                    .entry(actor_name_no_args.into())
                     .or_insert_with(Default::default);
+                actor_def.generics = generics.clone();
                 let actor_path = match **actor_name {
                     Type::Path(TypePath{ref path, ..}) => path,
                     _ => unimplemented!(),
