@@ -1,4 +1,4 @@
-use {Model, HandlerType, Handler, ActorDef};
+use {Model, HandlerType, Handler};
 use syn::*;
 use syn::export::ToTokens;
 use unindent::unindent;
@@ -25,14 +25,16 @@ fn pth(path: &Path) -> String {
     path.segments.iter().map(|segment| segment.ident.to_string()).collect::<Vec<_>>().join("::")
 }
 
-impl ActorDef {
-    fn short_generics(&self) -> String {
-        self.generics.split_for_impl().1.into_token_stream().to_string().replace("< ", "<").replace(" >", ">").replace(" :", ":").replace(" ,", ",")
-    }
+fn generics_from_path(path: &Path) -> String {
+    path.segments.last().unwrap().value().arguments.clone().into_token_stream().to_string().replace("< ", "<").replace(" >", ">").replace(" ,", ",")
+}
 
-    fn full_generics(&self) -> String {
-        self.generics.split_for_impl().0.into_token_stream().to_string().replace("< ", "<").replace(" >", ">").replace(" :", ":").replace(" ,", ",")
-    }
+fn to_short_generics(generics: &syn::Generics) -> String {
+    generics.split_for_impl().1.into_token_stream().to_string().replace("< ", "<").replace(" >", ">").replace(" :", ":").replace(" ,", ",")
+}
+
+fn to_full_generics(generics: &syn::Generics) -> String {
+    generics.split_for_impl().0.into_token_stream().to_string().replace("< ", "<").replace(" >", ">").replace(" :", ":").replace(" ,", ",")
 }
 
 impl Handler {
@@ -69,14 +71,19 @@ impl Handler {
 
 impl Model {
     pub fn generate_setups(&self) -> String {
-        let trait_registrations = self.traits.keys().map(|trait_name|
-            format!("{trait_name}ID::register_trait(system);", trait_name=pth(trait_name))
-        ).collect::<Vec<_>>().join("\n");
+        let trait_registrations = self.traits.iter().map(|(trait_name, trait_def)| {
+            let short_generics = to_short_generics(&trait_def.generics);
+            let short_generics_turbofish = if short_generics.is_empty() {short_generics} else {format!("::{}", short_generics)};
+            format!("{trait_name}ID{short_generics_turbofish}::register_trait(system);", trait_name=pth(trait_name), short_generics_turbofish=short_generics_turbofish)
+
+        }).collect::<Vec<_>>().join("\n");
 
         let actor_setups = self.actors.iter().map(|(actor_name, actor_def)| {
-            let impl_registrations = actor_def.impls.iter().map(|trait_name|
-                format!("{trait_name}ID::register_implementor::<{actor_name}>(system);", trait_name=pth(trait_name), actor_name=pth_t(actor_name))
-            ).collect::<Vec<_>>().join("\n");
+            let impl_registrations = actor_def.impls.iter().map(|trait_name| {
+                let impl_generics = generics_from_path(trait_name);
+                let impl_generics_turbofish = if impl_generics.is_empty() {impl_generics} else {format!("::{}", impl_generics)};
+                format!("{trait_name}ID{impl_generics_turbofish}::register_implementor::<{actor_name}>(system);", impl_generics_turbofish=impl_generics_turbofish, trait_name=pth(trait_name), actor_name=pth_t(actor_name))
+            }).collect::<Vec<_>>().join("\n");
 
             let handler_registrations = actor_def.handlers.iter().filter_map(|handler|
                 if handler.from_trait.is_none() {
@@ -84,8 +91,8 @@ impl Model {
                     let is_critical = if handler.critical {"true"} else {"false"};
                     let msg_args = handler.arguments.iter().filter_map(arg_ref_to_bind_as_ref_without_world).collect::<Vec<_>>().join(", ");
                     let handler_params = handler.arguments.iter().map(arg_as_value).collect::<Vec<_>>().join(", ");
-                    let short_generics = actor_def.short_generics();
-                    let full_generics = actor_def.full_generics();
+                    let short_generics = to_short_generics(&actor_def.generics);
+                    let full_generics = to_full_generics(&actor_def.generics);
                     let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), true);
                     let used_generics_turbofish = if used_generics.is_empty() {used_generics} else {format!("::{}", used_generics)};
                     let short_generics_turbofish = if short_generics.is_empty() {short_generics.clone()} else {format!("::{}", short_generics)};
@@ -121,13 +128,20 @@ impl Model {
         }).collect::<Vec<_>>().join("\n");
 
         let all_generics_inner = self.actors.iter().filter_map(|(_, actor_def)| {
-            let full_generics = actor_def.full_generics();
+            let full_generics = to_full_generics(&actor_def.generics);
             if full_generics.is_empty() {
                 None
             } else {
                 Some(full_generics.replace("<", "").replace(">", ""))
             }
-        }).collect::<Vec<_>>().join(", ");
+        }).chain(self.traits.iter().filter_map(|(_, trait_def)| {
+            let full_generics = to_full_generics(&trait_def.generics);
+            if full_generics.is_empty() {
+                None
+            } else {
+                Some(full_generics.replace("<", "").replace(">", ""))
+            }
+        })).collect::<Vec<_>>().join(", ");
 
         let all_generics = if all_generics_inner.is_empty() {all_generics_inner} else {format!("<{}>", all_generics_inner)};
 
@@ -143,13 +157,16 @@ impl Model {
     pub fn generate_traits(&self) -> String {
         #[cfg(feature = "serde-serialization")]
         let trait_id_derives = unindent(r#"
-            #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)] #[serde(transparent)]"#);
+            #[derive(Serialize, Deserialize)] #[serde(transparent)]"#);
 
         #[cfg(not(feature = "serde-serialization"))]
-        let trait_id_derives = unindent(r#"
-            #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]"#);
+        let trait_id_derives = "".to_owned();
 
         self.traits.iter().map(|(trait_name, trait_def)| {
+            let full_generics = to_full_generics(&trait_def.generics);
+            let full_generics_inner_comma = if full_generics.is_empty() {"".to_owned()} else {format!("{}, ", full_generics.replace("<", "").replace(">", ""))};
+            let short_generics = to_short_generics(&trait_def.generics);
+
             let handler_send_impls = trait_def.handlers.iter().map(|handler| {
                 let handler_args = handler.arguments.iter().map(arg_as_ident_val_and_type).collect::<Vec<_>>().join(", ");
                 let msg_prefix = trait_to_message_prefix(trait_name);
@@ -165,7 +182,8 @@ impl Model {
             let trait_msg_registrations = trait_def.handlers.iter().map(|handler| {
                 let msg_prefix = trait_to_message_prefix(trait_name);
                 let msg_name = format!("{}_{}", msg_prefix, handler.name);
-                format!("system.register_trait_message::<{}>();", msg_name)
+                let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), true);
+                format!("system.register_trait_message::<{}{}>();", msg_name, used_generics)
             }).collect::<Vec<_>>().join("\n");
 
             let implementor_handler_registrations = trait_def.handlers.iter().map(|handler| {
@@ -178,12 +196,15 @@ impl Model {
                 let maybe_return = if handler.returns_fate {""} else {"; Fate::Live"};
                 let is_critical = if handler.critical {"true"} else {"false"};
 
+                let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), true);
+                let used_generics_turbofish = if used_generics.is_empty() {used_generics} else {format!("::{}", used_generics)};
+
                 unindent(&format!(r#"
-                    system.add_handler::<A, _, _>(
-                        |&{msg_name}({msg_args}), instance, world| {{
+                    system.add_handler::<Act, _, _>(
+                        |&{msg_name}{used_generics_turbofish}({msg_args}), instance, world| {{
                             instance.{handler_name}({handler_params}){maybe_return}
                         }}, {is_critical}
-                    );"#, msg_name=msg_name, msg_args=msg_args, handler_name=handler.name, handler_params=handler_params, maybe_return=maybe_return, is_critical=is_critical))
+                    );"#, msg_name=msg_name, msg_args=msg_args, used_generics_turbofish=used_generics_turbofish, handler_name=handler.name, handler_params=handler_params, maybe_return=maybe_return, is_critical=is_critical))
             }).collect::<Vec<_>>().join("\n\n");
 
             let msg_struct_defs = trait_def.handlers.iter().map(|handler| {
@@ -191,7 +212,9 @@ impl Model {
                 let msg_name = format!("{}_{}", msg_prefix, handler.name);
 
                 let msg_param_types = handler.arguments.iter().filter_map(arg_as_pub_type_without_world).collect::<Vec<_>>().join(", ");
-                let msg_derives = if msg_param_types.is_empty() {
+                let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), false);
+
+                let msg_derives = if msg_param_types.is_empty() && used_generics.is_empty() {
                     "#[derive(Copy, Clone)]"
                 } else {
                     "#[derive(Compact, Clone)]"
@@ -199,26 +222,55 @@ impl Model {
 
                 unindent(&format!(r#"
                     {msg_derives} #[allow(non_camel_case_types)]
-                    struct {msg_name}({msg_param_types});"#, msg_derives=msg_derives, msg_name=msg_name, msg_param_types=msg_param_types))
+                    struct {msg_name}{used_generics}({msg_param_types});"#, msg_derives=msg_derives, msg_name=msg_name, used_generics=used_generics, msg_param_types=msg_param_types))
             }).collect::<Vec<_>>().join("\n");
+
+            let (maybe_marker, maybe_marker_only, maybe_marker_init) = if full_generics.is_empty() {
+                ("".to_owned(), "".to_owned(), "")
+            } else {
+                (
+                    format!(", _marker: ::std::marker::PhantomData<Box<({})>>", short_generics.replace("<", "").replace(">", "")),
+                    format!("{{ _marker: ::std::marker::PhantomData<Box<({})>> }}", short_generics.replace("<", "").replace(">", "")),
+                    ", _marker: ::std::marker::PhantomData"
+                )
+            };
 
             unindent(&format!(r#"
                 {trait_id_derives}
-                pub struct {trait_name}ID {{
-                    _raw_id: RawID
+                pub struct {trait_name}ID{full_generics} {{
+                    _raw_id: RawID{maybe_marker}
                 }}
 
-                pub struct {trait_name}Representative;
+                impl{full_generics} Copy for {trait_name}ID{short_generics} {{}}
+                impl{full_generics} Clone for {trait_name}ID{short_generics} {{ fn clone(&self) -> Self {{ *self }} }}
+                impl{full_generics} ::std::fmt::Debug for {trait_name}ID{short_generics} {{
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {{
+                        write!(f, "{trait_name}ID{short_generics}({{:?}})", self._raw_id)
+                    }}
+                }}
+                impl{full_generics} ::std::hash::Hash for {trait_name}ID{short_generics} {{
+                    fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {{
+                        self._raw_id.hash(state);
+                    }}
+                }}
+                impl{full_generics} PartialEq for {trait_name}ID{short_generics} {{
+                    fn eq(&self, other: &{trait_name}ID{short_generics}) -> bool {{
+                        self._raw_id == other._raw_id
+                    }}
+                }}
+                impl{full_generics} Eq for {trait_name}ID{short_generics} {{}}
 
-                impl ActorOrActorTrait for {trait_name}Representative {{
-                    type ID = {trait_name}ID;
+                pub struct {trait_name}Representative{full_generics}{maybe_marker_only};
+
+                impl{full_generics} ActorOrActorTrait for {trait_name}Representative{short_generics} {{
+                    type ID = {trait_name}ID{short_generics};
                 }}
 
-                impl TypedID for {trait_name}ID {{
-                    type Target = {trait_name}Representative;
+                impl{full_generics} TypedID for {trait_name}ID{short_generics} {{
+                    type Target = {trait_name}Representative{short_generics};
 
                     fn from_raw(id: RawID) -> Self {{
-                        {trait_name}ID {{ _raw_id: id }}
+                        {trait_name}ID {{ _raw_id: id{maybe_marker_init} }}
                     }}
 
                     fn as_raw(&self) -> RawID {{
@@ -226,23 +278,23 @@ impl Model {
                     }}
                 }}
 
-                impl<A: Actor + {trait_name}> TraitIDFrom<A> for {trait_name}ID {{}}
+                impl<{full_generics_inner_comma}Act: Actor + {trait_name}{short_generics}> TraitIDFrom<Act> for {trait_name}ID{short_generics} {{}}
 
-                impl {trait_name}ID {{
+                impl{full_generics} {trait_name}ID{short_generics} {{
                     {handler_send_impls}
 
                     pub fn register_trait(system: &mut ActorSystem) {{
-                        system.register_trait::<{trait_name}Representative>();
+                        system.register_trait::<{trait_name}Representative{short_generics}>();
                         {trait_msg_registrations}
                     }}
 
-                    pub fn register_implementor<A: Actor + {trait_name}>(system: &mut ActorSystem) {{
-                        system.register_implementor::<A, {trait_name}Representative>();
+                    pub fn register_implementor<Act: Actor + {trait_name}{short_generics}>(system: &mut ActorSystem) {{
+                        system.register_implementor::<Act, {trait_name}Representative{short_generics}>();
                         {implementor_handler_registrations}
                     }}
                 }}
 
-                {msg_struct_defs}"#, trait_id_derives=trait_id_derives, trait_name=pth(trait_name), handler_send_impls=ind(&handler_send_impls, 5), trait_msg_registrations=&ind(&trait_msg_registrations, 6), implementor_handler_registrations=&ind(&implementor_handler_registrations, 6), msg_struct_defs=ind(&msg_struct_defs, 4)))
+                {msg_struct_defs}"#, trait_id_derives=trait_id_derives, trait_name=pth(trait_name), full_generics=full_generics, full_generics_inner_comma=full_generics_inner_comma, short_generics=short_generics, maybe_marker=maybe_marker, maybe_marker_only=maybe_marker_only, maybe_marker_init=maybe_marker_init, handler_send_impls=ind(&handler_send_impls, 5), trait_msg_registrations=&ind(&trait_msg_registrations, 6), implementor_handler_registrations=&ind(&implementor_handler_registrations, 6), msg_struct_defs=ind(&msg_struct_defs, 4)))
         }).collect::<Vec<_>>().join("\n")
     }
 
@@ -255,8 +307,8 @@ impl Model {
         let actor_id_derives = "".to_owned();
 
         self.actors.iter().map(|(actor_name, actor_def)| {
-            let full_generics = actor_def.full_generics();
-            let short_generics = actor_def.short_generics();
+            let full_generics = to_full_generics(&actor_def.generics);
+            let short_generics = to_short_generics(&actor_def.generics);
             let short_generics_turbofish = if short_generics.is_empty() {short_generics.clone()} else {format!("::{}", short_generics)};
 
             let (maybe_marker, maybe_marker_init) = if full_generics.is_empty() {
@@ -369,12 +421,13 @@ impl Model {
             }).collect::<Vec<_>>().join("\n");
 
             let id_conversion_impls = actor_def.impls.iter().map(|trait_name| {
+                let impl_generics = generics_from_path(trait_name);
                 unindent(&format!(r#"
-                    impl Into<{trait_name}ID> for {actor_name}ID{short_generics} {{
-                        fn into(self) -> {trait_name}ID {{
+                    impl Into<{trait_name}ID{impl_generics}> for {actor_name}ID{short_generics} {{
+                        fn into(self) -> {trait_name}ID{impl_generics} {{
                             {trait_name}ID::from_raw(self.as_raw())
                         }}
-                    }}"#, trait_name=pth(trait_name), actor_name=pth_t(actor_name), short_generics=short_generics))
+                    }}"#, trait_name=pth(trait_name), actor_name=pth_t(actor_name), impl_generics=impl_generics, short_generics=short_generics))
             }).collect::<Vec<_>>().join("\n\n");
 
             unindent(&format!(r#"

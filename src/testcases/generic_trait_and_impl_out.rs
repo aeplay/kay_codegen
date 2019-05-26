@@ -6,40 +6,40 @@ use kay::{ActorSystem, TypedID, RawID, Fate, Actor, TraitIDFrom, ActorOrActorTra
 use super::*;
 
 
-pub struct SomeTraitID {
-    _raw_id: RawID
+pub struct SomeTraitID<A: Compact, B: Compact> {
+    _raw_id: RawID, _marker: ::std::marker::PhantomData<Box<(A, B)>>
 }
 
-impl Copy for SomeTraitID {}
-impl Clone for SomeTraitID { fn clone(&self) -> Self { *self } }
-impl ::std::fmt::Debug for SomeTraitID {
+impl<A: Compact, B: Compact> Copy for SomeTraitID<A, B> {}
+impl<A: Compact, B: Compact> Clone for SomeTraitID<A, B> { fn clone(&self) -> Self { *self } }
+impl<A: Compact, B: Compact> ::std::fmt::Debug for SomeTraitID<A, B> {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "SomeTraitID({:?})", self._raw_id)
+        write!(f, "SomeTraitID<A, B>({:?})", self._raw_id)
     }
 }
-impl ::std::hash::Hash for SomeTraitID {
+impl<A: Compact, B: Compact> ::std::hash::Hash for SomeTraitID<A, B> {
     fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
         self._raw_id.hash(state);
     }
 }
-impl PartialEq for SomeTraitID {
-    fn eq(&self, other: &SomeTraitID) -> bool {
+impl<A: Compact, B: Compact> PartialEq for SomeTraitID<A, B> {
+    fn eq(&self, other: &SomeTraitID<A, B>) -> bool {
         self._raw_id == other._raw_id
     }
 }
-impl Eq for SomeTraitID {}
+impl<A: Compact, B: Compact> Eq for SomeTraitID<A, B> {}
 
-pub struct SomeTraitRepresentative;
+pub struct SomeTraitRepresentative<A: Compact, B: Compact>{ _marker: ::std::marker::PhantomData<Box<(A, B)>> };
 
-impl ActorOrActorTrait for SomeTraitRepresentative {
-    type ID = SomeTraitID;
+impl<A: Compact, B: Compact> ActorOrActorTrait for SomeTraitRepresentative<A, B> {
+    type ID = SomeTraitID<A, B>;
 }
 
-impl TypedID for SomeTraitID {
-    type Target = SomeTraitRepresentative;
+impl<A: Compact, B: Compact> TypedID for SomeTraitID<A, B> {
+    type Target = SomeTraitRepresentative<A, B>;
 
     fn from_raw(id: RawID) -> Self {
-        SomeTraitID { _raw_id: id }
+        SomeTraitID { _raw_id: id, _marker: ::std::marker::PhantomData }
     }
 
     fn as_raw(&self) -> RawID {
@@ -47,10 +47,10 @@ impl TypedID for SomeTraitID {
     }
 }
 
-impl<Act: Actor + SomeTrait> TraitIDFrom<Act> for SomeTraitID {}
+impl<A: Compact, B: Compact, Act: Actor + SomeTrait<A, B>> TraitIDFrom<Act> for SomeTraitID<A, B> {}
 
-impl SomeTraitID {
-    pub fn some_method(self, some_param: usize, world: &mut World) {
+impl<A: Compact, B: Compact> SomeTraitID<A, B> {
+    pub fn some_method(self, some_param: A, world: &mut World) {
         world.send(self.as_raw(), MSG_SomeTrait_some_method(some_param));
     }
 
@@ -63,16 +63,16 @@ impl SomeTraitID {
     }
 
     pub fn register_trait(system: &mut ActorSystem) {
-        system.register_trait::<SomeTraitRepresentative>();
-        system.register_trait_message::<MSG_SomeTrait_some_method>();
+        system.register_trait::<SomeTraitRepresentative<A, B>>();
+        system.register_trait_message::<MSG_SomeTrait_some_method<A>>();
         system.register_trait_message::<MSG_SomeTrait_no_params_fate>();
         system.register_trait_message::<MSG_SomeTrait_some_default_impl_method>();
     }
 
-    pub fn register_implementor<Act: Actor + SomeTrait>(system: &mut ActorSystem) {
-        system.register_implementor::<Act, SomeTraitRepresentative>();
+    pub fn register_implementor<Act: Actor + SomeTrait<A, B>>(system: &mut ActorSystem) {
+        system.register_implementor::<Act, SomeTraitRepresentative<A, B>>();
         system.add_handler::<Act, _, _>(
-            |&MSG_SomeTrait_some_method(some_param), instance, world| {
+            |&MSG_SomeTrait_some_method::<A>(some_param), instance, world| {
                 instance.some_method(some_param, world); Fate::Live
             }, false
         );
@@ -92,7 +92,7 @@ impl SomeTraitID {
 }
 
 #[derive(Compact, Clone)] #[allow(non_camel_case_types)]
-struct MSG_SomeTrait_some_method(pub usize);
+struct MSG_SomeTrait_some_method<A: Compact>(pub A);
 #[derive(Copy, Clone)] #[allow(non_camel_case_types)]
 struct MSG_SomeTrait_no_params_fate();
 #[derive(Copy, Clone)] #[allow(non_camel_case_types)]
@@ -151,22 +151,22 @@ impl SomeActorID {
 
 
 
-impl Into<SomeTraitID> for SomeActorID {
-    fn into(self) -> SomeTraitID {
+impl Into<SomeTraitID<usize, isize>> for SomeActorID {
+    fn into(self) -> SomeTraitID<usize, isize> {
         SomeTraitID::from_raw(self.as_raw())
     }
 }
 
-impl Into<ForeignTraitID> for SomeActorID {
-    fn into(self) -> ForeignTraitID {
+impl Into<ForeignTraitID<usize, isize>> for SomeActorID {
+    fn into(self) -> ForeignTraitID<usize, isize> {
         ForeignTraitID::from_raw(self.as_raw())
     }
 }
 
 #[allow(unused_variables)]
 #[allow(unused_mut)]
-pub fn auto_setup(system: &mut ActorSystem) {
-    SomeTraitID::register_trait(system);
-    SomeTraitID::register_implementor::<SomeActor>(system);
-    ForeignTraitID::register_implementor::<SomeActor>(system);
+pub fn auto_setup<A: Compact, B: Compact>(system: &mut ActorSystem) {
+    SomeTraitID::<A, B>::register_trait(system);
+    SomeTraitID::<usize, isize>::register_implementor::<SomeActor>(system);
+    ForeignTraitID::<usize, isize>::register_implementor::<SomeActor>(system);
 }

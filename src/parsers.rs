@@ -45,12 +45,13 @@ pub fn parse(file: &str) -> ::std::result::Result<Model, parse::Error> {
                         .extend(handlers_from_impl_items(impl_items, &None, actor_path));
                 }
             }
-            Item::Trait(ItemTrait{ident, items: ref trait_items, ..}) => {
+            Item::Trait(ItemTrait{ident, items: ref trait_items, generics, ..}) => {
                 let trait_name: TraitName = ::syn::Path::from(PathSegment::from(ident.clone()));
                 let trait_def = model
                     .traits
                     .entry(trait_name.clone())
                     .or_insert_with(Default::default);
+                trait_def.generics = generics.clone();
                 let as_segment: PathSegment = ident.clone().into();
                 trait_def.handlers.extend(handlers_from_trait_items(
                     trait_items,

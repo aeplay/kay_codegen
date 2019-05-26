@@ -94,6 +94,7 @@ pub struct ActorDef {
 #[derive(Default, Debug)]
 pub struct TraitDef {
     pub handlers: Vec<Handler>,
+    pub generics: syn::Generics
 }
 
 #[derive(Clone, Debug)]
@@ -163,6 +164,16 @@ fn trait_and_impl() {
 fn generic_actor() {
     let input = include_str!("./testcases/generic_actor_in.rs");
     let expected = include_str!("./testcases/generic_actor_out.rs");
+
+    let output = generate(&parse(input).unwrap());
+
+    assert_eq!(normalize_empty_lines(&expected), normalize_empty_lines(&output));
+}
+
+#[test]
+fn generic_trait_and_impl() {
+    let input = include_str!("./testcases/generic_trait_and_impl_in.rs");
+    let expected = include_str!("./testcases/generic_trait_and_impl_out.rs");
 
     let output = generate(&parse(input).unwrap());
 
