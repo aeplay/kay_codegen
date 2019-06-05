@@ -51,7 +51,7 @@ impl<A: Compact, B: Compact, Act: Actor + SomeTrait<A, B>> TraitIDFrom<Act> for 
 
 impl<A: Compact, B: Compact> SomeTraitID<A, B> {
     pub fn some_method(self, some_param: A, world: &mut World) {
-        world.send(self.as_raw(), MSG_SomeTrait_some_method(some_param));
+        world.send(self.as_raw(), MSG_SomeTrait_some_method::<A>(some_param));
     }
 
     pub fn no_params_fate(self, world: &mut World) {

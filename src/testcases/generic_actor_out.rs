@@ -56,7 +56,7 @@ impl<A: Compact, B: Compact> TypedID for SomeActorID<A, B> {
 
 impl<A: Compact, B: Compact> SomeActorID<A, B> {
     pub fn some_method(self, some_param: usize, thing: B, world: &mut World) {
-        world.send(self.as_raw(), MSG_SomeActor_some_method(some_param, thing));
+        world.send(self.as_raw(), MSG_SomeActor_some_method::<B>(some_param, thing));
     }
 
     pub fn no_params_fate(self, world: &mut World) {
@@ -66,7 +66,7 @@ impl<A: Compact, B: Compact> SomeActorID<A, B> {
     pub fn init_ish(some_param: usize, world: &mut World) -> Self {
         let id = SomeActorID::<A, B>::from_raw(world.allocate_instance_id::<SomeActor<A, B>>());
         let swarm = world.local_broadcast::<SomeActor<A, B>>();
-        world.send(swarm, MSG_SomeActor_init_ish(id, some_param));
+        world.send(swarm, MSG_SomeActor_init_ish::<A, B>(id, some_param));
         id
     }
 }

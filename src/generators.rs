@@ -182,10 +182,13 @@ impl Model {
                 let msg_name = format!("{}_{}", msg_prefix, handler.name);
                 let msg_params = handler.arguments.iter().filter_map(arg_as_value_without_world).collect::<Vec<_>>().join(", ");
 
+                let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), true);
+                let used_generics_turbofish = if used_generics.is_empty() {used_generics} else {format!("::{}", used_generics)};
+
                 unindent(&format!(r#"
                     pub fn {handler_name}(self, {handler_args}) {{
-                        world.send(self.as_raw(), {msg_name}({msg_params}));
-                    }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, msg_params=msg_params))
+                        world.send(self.as_raw(), {msg_name}{used_generics_turbofish}({msg_params}));
+                    }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, used_generics_turbofish=used_generics_turbofish, msg_params=msg_params))
             }).collect::<Vec<_>>().join("\n\n");
 
             let trait_msg_registrations = trait_def.handlers.iter().map(|handler| {
@@ -386,21 +389,24 @@ impl Model {
                 let msg_params = handler.arguments.iter().filter_map(arg_as_value_without_world).collect::<Vec<_>>().join(", ");
                 let handler_args = handler.arguments.iter().map(arg_as_ident_val_and_type).collect::<Vec<_>>().join(", ");
 
+                let used_generics = handler.used_generics(short_generics.clone(), full_generics.clone(), true);
+                let used_generics_turbofish = if used_generics.is_empty() {used_generics} else {format!("::{}", used_generics)};
+
                 match handler.scope {
                     HandlerType::Handler => {
                         Some(unindent(&format!(r#"
                             pub fn {handler_name}(self, {handler_args}) {{
-                                world.send(self.as_raw(), {msg_name}({msg_params}));
-                            }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, msg_params=msg_params)))
+                                world.send(self.as_raw(), {msg_name}{used_generics_turbofish}({msg_params}));
+                            }}"#, handler_name=handler.name, handler_args=handler_args, msg_name=msg_name, used_generics_turbofish=used_generics_turbofish, msg_params=msg_params)))
                     },
                     HandlerType::Init => {
                         Some(unindent(&format!(r#"
                             pub fn {handler_name}({handler_args}) -> Self {{
                                 let id = {actor_name}ID{short_generics_turbofish}::from_raw(world.allocate_instance_id::<{actor_name}{short_generics}>());
                                 let swarm = world.local_broadcast::<{actor_name}{short_generics}>();
-                                world.send(swarm, {msg_name}(id, {msg_params}));
+                                world.send(swarm, {msg_name}{used_generics_turbofish}(id, {msg_params}));
                                 id
-                            }}"#, handler_name=handler.name, short_generics_turbofish=short_generics_turbofish, short_generics=short_generics, handler_args=handler_args, actor_name=pth_t(actor_name), msg_name=msg_name, msg_params=msg_params)))
+                            }}"#, handler_name=handler.name, short_generics_turbofish=short_generics_turbofish, short_generics=short_generics, handler_args=handler_args, actor_name=pth_t(actor_name), msg_name=msg_name, used_generics_turbofish=used_generics_turbofish, msg_params=msg_params)))
                     }
                 }
             }).collect::<Vec<_>>().join("\n\n");
