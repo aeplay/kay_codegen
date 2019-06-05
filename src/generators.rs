@@ -226,7 +226,7 @@ impl Model {
             }).collect::<Vec<_>>().join("\n");
 
             let (maybe_marker, maybe_marker_only, maybe_marker_init) = if full_generics.is_empty() {
-                ("".to_owned(), "".to_owned(), "")
+                ("".to_owned(), ";".to_owned(), "")
             } else {
                 (
                     format!(", _marker: ::std::marker::PhantomData<Box<({})>>", short_generics.replace("<", "").replace(">", "")),
@@ -260,7 +260,7 @@ impl Model {
                 }}
                 impl{full_generics} Eq for {trait_name}ID{short_generics} {{}}
 
-                pub struct {trait_name}Representative{full_generics}{maybe_marker_only};
+                pub struct {trait_name}Representative{full_generics}{maybe_marker_only}
 
                 impl{full_generics} ActorOrActorTrait for {trait_name}Representative{short_generics} {{
                     type ID = {trait_name}ID{short_generics};

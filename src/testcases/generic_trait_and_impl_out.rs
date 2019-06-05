@@ -29,7 +29,7 @@ impl<A: Compact, B: Compact> PartialEq for SomeTraitID<A, B> {
 }
 impl<A: Compact, B: Compact> Eq for SomeTraitID<A, B> {}
 
-pub struct SomeTraitRepresentative<A: Compact, B: Compact>{ _marker: ::std::marker::PhantomData<Box<(A, B)>> };
+pub struct SomeTraitRepresentative<A: Compact, B: Compact>{ _marker: ::std::marker::PhantomData<Box<(A, B)>> }
 
 impl<A: Compact, B: Compact> ActorOrActorTrait for SomeTraitRepresentative<A, B> {
     type ID = SomeTraitID<A, B>;
