@@ -79,10 +79,14 @@ impl Model {
         }).collect::<Vec<_>>().join("\n");
 
         let actor_setups = self.actors.iter().map(|(actor_name, actor_def)| {
+            let short_generics = to_short_generics(&actor_def.generics);
+
             let impl_registrations = actor_def.impls.iter().map(|trait_name| {
                 let impl_generics = generics_from_path(trait_name);
                 let impl_generics_turbofish = if impl_generics.is_empty() {impl_generics} else {format!("::{}", impl_generics)};
-                format!("{trait_name}ID{impl_generics_turbofish}::register_implementor::<{actor_name}>(system);", impl_generics_turbofish=impl_generics_turbofish, trait_name=pth(trait_name), actor_name=pth_t(actor_name))
+                format!(
+                    "{trait_name}ID{impl_generics_turbofish}::register_implementor::<{actor_name}{short_generics}>(system);",
+                    impl_generics_turbofish=impl_generics_turbofish, short_generics=short_generics, trait_name=pth(trait_name), actor_name=pth_t(actor_name))
             }).collect::<Vec<_>>().join("\n");
 
             let handler_registrations = actor_def.handlers.iter().filter_map(|handler|
@@ -127,7 +131,7 @@ impl Model {
                 {handler_registrations}"#, impl_registrations=ind(&impl_registrations, 4), handler_registrations=ind(&handler_registrations, 4)))
         }).collect::<Vec<_>>().join("\n");
 
-        let all_generics_inner = self.actors.iter().filter_map(|(_, actor_def)| {
+        let mut all_generics_inner_items = self.actors.iter().filter_map(|(_, actor_def)| {
             let full_generics = to_full_generics(&actor_def.generics);
             if full_generics.is_empty() {
                 None
@@ -141,7 +145,12 @@ impl Model {
             } else {
                 Some(full_generics.replace("<", "").replace(">", ""))
             }
-        })).collect::<Vec<_>>().join(", ");
+        })).collect::<Vec<_>>();
+
+        all_generics_inner_items.sort();
+        all_generics_inner_items.dedup();
+
+        let all_generics_inner = all_generics_inner_items.join(", ");
 
         let all_generics = if all_generics_inner.is_empty() {all_generics_inner} else {format!("<{}>", all_generics_inner)};
 
