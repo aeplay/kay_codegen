@@ -423,11 +423,11 @@ impl Model {
             let id_conversion_impls = actor_def.impls.iter().map(|trait_name| {
                 let impl_generics = generics_from_path(trait_name);
                 unindent(&format!(r#"
-                    impl Into<{trait_name}ID{impl_generics}> for {actor_name}ID{short_generics} {{
+                    impl{full_generics} Into<{trait_name}ID{impl_generics}> for {actor_name}ID{short_generics} {{
                         fn into(self) -> {trait_name}ID{impl_generics} {{
                             {trait_name}ID::from_raw(self.as_raw())
                         }}
-                    }}"#, trait_name=pth(trait_name), actor_name=pth_t(actor_name), impl_generics=impl_generics, short_generics=short_generics))
+                    }}"#, trait_name=pth(trait_name), actor_name=pth_t(actor_name), impl_generics=impl_generics, full_generics=full_generics, short_generics=short_generics))
             }).collect::<Vec<_>>().join("\n\n");
 
             unindent(&format!(r#"
